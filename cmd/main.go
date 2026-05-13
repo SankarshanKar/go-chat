@@ -3,12 +3,17 @@ package main
 import (
 	"log"
 
+	"github.com/joho/godotenv"
 	"github.com/sankarshankar/go-chat/db"
 	"github.com/sankarshankar/go-chat/internal/user"
 	"github.com/sankarshankar/go-chat/router"
 )
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Warning: .env file not found: %s", err)
+	}
+
 	dbConn, err := db.NewDatabase()
 	if err != nil {
 		log.Fatalf("Could not initilize database connection: %s", err)

@@ -11,6 +11,8 @@ var mux *http.ServeMux
 func InitRouter(userHandler *user.Handler) {
 	mux = http.NewServeMux()
 	mux.HandleFunc("POST /signup", userHandler.CreateUser)
+	mux.HandleFunc("POST /login", userHandler.Login)
+	mux.HandleFunc("GET /logout", userHandler.Logout)
 }
 
 func Start(addr string) error {
