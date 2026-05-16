@@ -6,6 +6,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/sankarshankar/go-chat/db"
 	"github.com/sankarshankar/go-chat/internal/user"
+	"github.com/sankarshankar/go-chat/internal/ws"
 	"github.com/sankarshankar/go-chat/router"
 )
 
@@ -23,6 +24,9 @@ func main() {
 	userSvc := user.NewService(userRep)
 	userHandler := user.NewHandler(userSvc)
 
-	router.InitRouter(userHandler)
+	hub := ws.NewHub()
+	wsHandler := ws.NewHandler(hub)
+
+	router.InitRouter(userHandler, wsHandler)
 	router.Start("0.0.0.0:8080")
 }
