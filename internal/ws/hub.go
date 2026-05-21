@@ -1,5 +1,7 @@
 package ws
 
+import "sync"
+
 type Room struct {
 	ID      string             `json:"id"`
 	Name    string             `json:"name"`
@@ -7,6 +9,7 @@ type Room struct {
 }
 
 type Hub struct {
+	mu    sync.RWMutex
 	Rooms map[string]*Room
 
 	Register   chan *Client
@@ -27,35 +30,47 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case cl := <-h.Register:
-			if _, ok := h.Rooms[cl.RoomID]; ok {
-				r := h.Rooms[cl.RoomID]
-
+			h.mu.Lock()
+			if r, ok := h.Rooms[cl.RoomID]; ok {
 				if _, ok := r.Clients[cl.ID]; !ok {
 					r.Clients[cl.ID] = cl
 				}
 			}
+			h.mu.Unlock()
 
 		case cl := <-h.Unregister:
-			if _, ok := h.Rooms[cl.RoomID]; ok {
-				if _, ok := h.Rooms[cl.RoomID].Clients[cl.ID]; ok {
-					if len(h.Rooms[cl.RoomID].Clients) != 0 {
-						h.Broadcast <- &Message{
-							Content:  "User left the chat",
-							RoomID:   cl.RoomID,
-							Username: cl.Username,
-						}
-					}
-
-					delete(h.Rooms[cl.RoomID].Clients, cl.ID)
+			h.mu.Lock()
+			if r, ok := h.Rooms[cl.RoomID]; ok {
+				if _, ok := r.Clients[cl.ID]; ok {
+					delete(r.Clients, cl.ID)
 					close(cl.Message)
+					h.mu.Unlock()
+
+					h.Broadcast <- &Message{
+						Content:  "User left the chat",
+						RoomID:   cl.RoomID,
+						Username: cl.Username,
+					}
+					continue
 				}
 			}
+			h.mu.Unlock()
 
 		case m := <-h.Broadcast:
-			if _, ok := h.Rooms[m.RoomID]; ok {
-				for _, cl := range h.Rooms[m.RoomID].Clients {
-					cl.Message <- m
-				}
+			h.mu.RLock()
+			r, ok := h.Rooms[m.RoomID]
+			if !ok {
+				h.mu.RUnlock()
+				continue
+			}
+			clients := make([]*Client, 0, len(r.Clients))
+			for _, cl := range r.Clients {
+				clients = append(clients, cl)
+			}
+			h.mu.RUnlock()
+
+			for _, cl := range clients {
+				cl.Message <- m
 			}
 		}
 	}

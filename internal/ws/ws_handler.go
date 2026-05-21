@@ -30,11 +30,13 @@ func (h *Handler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.hub.mu.Lock()
 	h.hub.Rooms[req.ID] = &Room{
 		ID:      req.ID,
 		Name:    req.Name,
 		Clients: make(map[string]*Client),
 	}
+	h.hub.mu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -90,14 +92,15 @@ type RoomRes struct {
 }
 
 func (h *Handler) GetRooms(w http.ResponseWriter, r *http.Request) {
-	rooms := make([]RoomRes, 0)
-
-	for _, r := range h.hub.Rooms {
+	h.hub.mu.RLock()
+	rooms := make([]RoomRes, 0, len(h.hub.Rooms))
+	for _, room := range h.hub.Rooms {
 		rooms = append(rooms, RoomRes{
-			ID:   r.ID,
-			Name: r.Name,
+			ID:   room.ID,
+			Name: room.Name,
 		})
 	}
+	h.hub.mu.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -113,26 +116,29 @@ type ClientRes struct {
 }
 
 func (h *Handler) GetClients(w http.ResponseWriter, r *http.Request) {
-	var clients []ClientRes
-	roomId := r.URL.Query().Get("roomId")
+	roomId := r.PathValue("roomId")
+
+	h.hub.mu.RLock()
+	room, ok := h.hub.Rooms[roomId]
+	h.hub.mu.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
 
-	if _, ok := h.hub.Rooms[roomId]; !ok {
-		clients := make([]ClientRes, 0)
+	if !ok {
 		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(clients); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		json.NewEncoder(w).Encode(make([]ClientRes, 0))
+		return
 	}
 
-	for _, c := range h.hub.Rooms[roomId].Clients {
+	h.hub.mu.RLock()
+	clients := make([]ClientRes, 0, len(room.Clients))
+	for _, c := range room.Clients {
 		clients = append(clients, ClientRes{
 			ID:       c.ID,
 			Username: c.Username,
 		})
 	}
+	h.hub.mu.RUnlock()
 
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(clients); err != nil {
