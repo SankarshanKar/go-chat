@@ -18,6 +18,7 @@ func InitRouter(userHandler *user.Handler, wsHandler *ws.Handler) {
 	mux.HandleFunc("POST /ws/createRoom", wsHandler.CreateRoom)
 	mux.HandleFunc("GET /ws/joinRoom/{roomId}", wsHandler.JoinRoom)
 	mux.HandleFunc("GET /ws/getRooms", wsHandler.GetRooms)
+	mux.HandleFunc("GET /ws/getClients/{roomId}", wsHandler.GetClients)
 }
 
 func Start(addr string) error {

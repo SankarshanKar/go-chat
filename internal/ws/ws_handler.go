@@ -106,3 +106,37 @@ func (h *Handler) GetRooms(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+type ClientRes struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+}
+
+func (h *Handler) GetClients(w http.ResponseWriter, r *http.Request) {
+	var clients []ClientRes
+	roomId := r.URL.Query().Get("roomId")
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if _, ok := h.hub.Rooms[roomId]; !ok {
+		clients := make([]ClientRes, 0)
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(clients); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	for _, c := range h.hub.Rooms[roomId].Clients {
+		clients = append(clients, ClientRes{
+			ID:       c.ID,
+			Username: c.Username,
+		})
+	}
+
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(clients); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
