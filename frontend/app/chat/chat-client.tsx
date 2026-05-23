@@ -50,9 +50,17 @@ export default function ChatClient() {
   // Poll clients list every 5 seconds
   useEffect(() => {
     if (!roomId || !isConnected) return;
-    fetchClientsList();
+    
+    const timeout = setTimeout(() => {
+      fetchClientsList();
+    }, 0);
+
     const interval = setInterval(fetchClientsList, 5000);
-    return () => clearInterval(interval);
+    
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
   }, [roomId, isConnected]);
 
   // Connect to WebSocket
