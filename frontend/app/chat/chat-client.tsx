@@ -75,7 +75,7 @@ export default function ChatClient() {
       return;
     }
 
-    const socketUrl = `${WS_URL}/ws/joinRoom/${roomId}?userId=${user.id}&username=${user.username}`;
+    const socketUrl = `${WS_URL}/ws/joinRoom/${encodeURIComponent(roomId)}?userId=${user.id}&username=${user.username}`;
     const ws = new WebSocket(socketUrl);
     wsRef.current = ws;
 

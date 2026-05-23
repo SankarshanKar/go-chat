@@ -8,7 +8,7 @@ async function handleProxy(
 ) {
   const resolvedParams = await params;
   const pathSegments = resolvedParams.path || [];
-  const path = pathSegments.join("/");
+  const path = pathSegments.map((segment) => encodeURIComponent(segment)).join("/");
   
   const searchParams = request.nextUrl.search;
   const targetUrl = `${BACKEND_URL}/${path}${searchParams}`;
