@@ -47,13 +47,21 @@ export default function RoomsPage() {
   }, []);
 
   useEffect(() => {
+    let timeout: NodeJS.Timeout;
+
     if (!authLoading) {
       if (!user) {
         router.replace("/login");
       } else {
-        fetchRoomsList();
+        timeout = setTimeout(() => {
+          fetchRoomsList();
+        }, 0);
       }
     }
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
   }, [user, authLoading, router, fetchRoomsList]);
 
   const handleCreateRoom = async (e: React.FormEvent) => {
