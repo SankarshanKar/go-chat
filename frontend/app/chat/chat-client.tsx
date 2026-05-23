@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { Header } from "@/components/header";
@@ -37,7 +37,7 @@ export default function ChatClient() {
   }, [messages]);
 
   // Fetch clients inside the room
-  const fetchClientsList = async () => {
+  const fetchClientsList = useCallback(async () => {
     if (!roomId) return;
     try {
       const list = await getClients(roomId);
@@ -45,7 +45,7 @@ export default function ChatClient() {
     } catch {
       // Fail silently for polling
     }
-  };
+  }, [roomId]);
 
   // Poll clients list every 5 seconds
   useEffect(() => {
@@ -61,7 +61,7 @@ export default function ChatClient() {
       clearTimeout(timeout);
       clearInterval(interval);
     };
-  }, [roomId, isConnected]);
+  }, [roomId, isConnected, fetchClientsList]);
 
   // Connect to WebSocket
   useEffect(() => {
@@ -106,7 +106,7 @@ export default function ChatClient() {
     return () => {
       ws.close();
     };
-  }, [user, authLoading, roomId, router]);
+  }, [user, authLoading, roomId, router, fetchClientsList]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();

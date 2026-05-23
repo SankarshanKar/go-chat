@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { Header } from "@/components/header";
@@ -32,7 +32,7 @@ export default function RoomsPage() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
 
-  const fetchRoomsList = async (showSilently = false) => {
+  const fetchRoomsList = useCallback(async (showSilently = false) => {
     if (!showSilently) setLoadingRooms(true);
     setError("");
     try {
@@ -44,7 +44,7 @@ export default function RoomsPage() {
     } finally {
       setLoadingRooms(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!authLoading) {
@@ -54,7 +54,7 @@ export default function RoomsPage() {
         fetchRoomsList();
       }
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, fetchRoomsList]);
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
