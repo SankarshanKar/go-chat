@@ -2,6 +2,7 @@ package ws
 
 import (
 	"log"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -10,12 +11,6 @@ type Client struct {
 	Conn     *websocket.Conn
 	Message  chan *Message
 	ID       string `json:"id"`
-	RoomID   string `json:"roomId"`
-	Username string `json:"username"`
-}
-
-type Message struct {
-	Content  string `json:"content"`
 	RoomID   string `json:"roomId"`
 	Username string `json:"username"`
 }
@@ -31,7 +26,11 @@ func (c *Client) writeMessage() {
 			return
 		}
 
-		c.Conn.WriteJSON(message)
+		c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+		if err := c.Conn.WriteJSON(message); err != nil {
+			log.Printf("write error: %v", err)
+			return
+		}
 	}
 }
 
@@ -51,6 +50,7 @@ func (c *Client) readMessage(hub *Hub) {
 		}
 
 		msg := &Message{
+			Type:     MessageTypeChat,
 			Content:  string(m),
 			RoomID:   c.RoomID,
 			Username: c.Username,

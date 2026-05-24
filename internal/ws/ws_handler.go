@@ -74,6 +74,7 @@ func (h *Handler) JoinRoom(w http.ResponseWriter, r *http.Request) {
 	}
 
 	m := &Message{
+		Type:     MessageTypeChat,
 		Content:  "A new user has joined the room",
 		RoomID:   roomID,
 		Username: username,

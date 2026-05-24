@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { Header } from "@/components/header";
 import { ChatMessage } from "@/components/chat-message";
-import { getClients, WS_URL, type ChatMessage as ChatMessageType, type Client } from "@/lib/api";
+import { WS_URL, type ChatMessage as ChatMessageType, type Client } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -36,33 +36,6 @@ export default function ChatClient() {
     scrollToBottom();
   }, [messages]);
 
-  // Fetch clients inside the room
-  const fetchClientsList = useCallback(async () => {
-    if (!roomId) return;
-    try {
-      const list = await getClients(roomId);
-      setClients(Array.isArray(list) ? list : []);
-    } catch {
-      // Fail silently for polling
-    }
-  }, [roomId]);
-
-  // Poll clients list every 5 seconds
-  useEffect(() => {
-    if (!roomId || !isConnected) return;
-    
-    const timeout = setTimeout(() => {
-      fetchClientsList();
-    }, 0);
-
-    const interval = setInterval(fetchClientsList, 5000);
-    
-    return () => {
-      clearTimeout(timeout);
-      clearInterval(interval);
-    };
-  }, [roomId, isConnected, fetchClientsList]);
-
   // Connect to WebSocket
   useEffect(() => {
     if (authLoading) return;
@@ -82,15 +55,18 @@ export default function ChatClient() {
     ws.onopen = () => {
       setIsConnected(true);
       setError("");
-      fetchClientsList();
     };
 
     ws.onmessage = (event) => {
       try {
-        const msg: ChatMessageType = JSON.parse(event.data);
-        setMessages((prev) => [...prev, msg]);
+        const data = JSON.parse(event.data);
+        if (data.type === "clients") {
+          setClients(Array.isArray(data.clients) ? data.clients : []);
+        } else {
+          setMessages((prev) => [...prev, data]);
+        }
       } catch (err) {
-        // Fallback for non-JSON messages just in case
+        // Ignore invalid messages
       }
     };
 
@@ -106,7 +82,7 @@ export default function ChatClient() {
     return () => {
       ws.close();
     };
-  }, [user, authLoading, roomId, router, fetchClientsList]);
+  }, [user, authLoading, roomId, router]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();

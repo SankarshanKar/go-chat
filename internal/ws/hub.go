@@ -1,6 +1,9 @@
 package ws
 
-import "sync"
+import (
+	"log"
+	"sync"
+)
 
 type Room struct {
 	ID      string             `json:"id"`
@@ -17,6 +20,21 @@ type Hub struct {
 	Broadcast  chan *Message
 }
 
+type MessageType string
+
+const (
+	MessageTypeChat    MessageType = "chat"
+	MessageTypeClients MessageType = "clients"
+)
+
+type Message struct {
+	Type     MessageType `json:"type"`
+	Content  string      `json:"content,omitempty"`
+	RoomID   string      `json:"roomId,omitempty"`
+	Username string      `json:"username,omitempty"`
+	Clients  []ClientRes `json:"clients,omitempty"`
+}
+
 func NewHub() *Hub {
 	return &Hub{
 		Rooms:      make(map[string]*Room),
@@ -27,6 +45,13 @@ func NewHub() *Hub {
 }
 
 func (h *Hub) Run() {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Printf("hub: recovered from panic: %v", err)
+			go h.Run()
+		}
+	}()
+
 	for {
 		select {
 		case cl := <-h.Register:
@@ -35,6 +60,7 @@ func (h *Hub) Run() {
 				if _, ok := r.Clients[cl.ID]; !ok {
 					r.Clients[cl.ID] = cl
 				}
+				h.broadcastClients(r)
 			}
 			h.mu.Unlock()
 
@@ -43,14 +69,18 @@ func (h *Hub) Run() {
 			if r, ok := h.Rooms[cl.RoomID]; ok {
 				if _, ok := r.Clients[cl.ID]; ok {
 					delete(r.Clients, cl.ID)
+					h.broadcastClients(r)
 					close(cl.Message)
 					h.mu.Unlock()
 
-					h.Broadcast <- &Message{
-						Content:  "User left the chat",
-						RoomID:   cl.RoomID,
-						Username: cl.Username,
-					}
+					go func() {
+						h.Broadcast <- &Message{
+							Type:     MessageTypeChat,
+							Content:  "User left the chat",
+							RoomID:   cl.RoomID,
+							Username: cl.Username,
+						}
+					}()
 					continue
 				}
 			}
@@ -63,15 +93,35 @@ func (h *Hub) Run() {
 				h.mu.RUnlock()
 				continue
 			}
-			clients := make([]*Client, 0, len(r.Clients))
 			for _, cl := range r.Clients {
-				clients = append(clients, cl)
+				select {
+				case cl.Message <- m:
+				default:
+				}
 			}
 			h.mu.RUnlock()
+		}
+	}
+}
 
-			for _, cl := range clients {
-				cl.Message <- m
-			}
+func (h *Hub) broadcastClients(r *Room) {
+	clients := make([]ClientRes, 0, len(r.Clients))
+	for _, c := range r.Clients {
+		clients = append(clients, ClientRes{
+			ID:       c.ID,
+			Username: c.Username,
+		})
+	}
+
+	msg := &Message{
+		Type:    MessageTypeClients,
+		Clients: clients,
+	}
+
+	for _, cl := range r.Clients {
+		select {
+		case cl.Message <- msg:
+		default:
 		}
 	}
 }
