@@ -27,6 +27,7 @@
 | **Room management** | Create, list, and join arbitrary chat rooms |
 | **Live client tracking** | View active members in any room, updated in real time |
 | **Persistence** | User accounts stored in a local SQLite database |
+| **Health check** | `GET /health` endpoint exposing uptime, DB status, WebSocket stats, and Go runtime metrics |
 | **Zero framework dependencies** | HTTP serving via Go's `net/http` — no Gin, Echo, or Chi |
 
 ### Frontend (Next.js)
@@ -82,6 +83,8 @@ go-chat/
 │       └── 20260510222936_add_users_table.down.sql
 │
 ├── internal/
+│   ├── health/
+│   │   └── health_handler.go       # GET /health endpoint handler
 │   ├── user/
 │   │   ├── user.go                 # Models, repository & service interfaces
 │   │   ├── user_handler.go         # HTTP handlers (signup, login, logout)
@@ -121,6 +124,7 @@ go-chat/
 │       ├── api.ts                  # API client (signup, login, rooms, clients)
 │       └── utils.ts                # Tailwind merge utility
 │
+├── start.sh                        # Launch script (backend + frontend)
 ├── Makefile                        # Build and run commands
 ├── go.mod / go.sum                 # Go module dependencies
 └── .env                            # Environment configuration
@@ -152,6 +156,14 @@ make run
 
 The Go server starts on **`http://0.0.0.0:8080`**.
 
+### Both services
+
+```bash
+./start.sh
+```
+
+Builds the Go server, starts it in the background, then runs the Next.js frontend in the foreground. Press `Ctrl+C` to stop both.
+
 ### Frontend
 
 ```bash
@@ -169,6 +181,12 @@ The Next.js app starts on **`http://localhost:3000`**. The API proxy forwards `/
 ---
 
 ## 📡 API reference
+
+### Health
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET`  | `/health` | Server diagnostics: uptime, DB status, WebSocket stats, Go runtime |
 
 ### Authentication
 
