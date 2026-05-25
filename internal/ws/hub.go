@@ -104,6 +104,16 @@ func (h *Hub) Run() {
 	}
 }
 
+func (h *Hub) Stats() (rooms int, clients int) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	rooms = len(h.Rooms)
+	for _, r := range h.Rooms {
+		clients += len(r.Clients)
+	}
+	return
+}
+
 func (h *Hub) broadcastClients(r *Room) {
 	clients := make([]ClientRes, 0, len(r.Clients))
 	for _, c := range r.Clients {

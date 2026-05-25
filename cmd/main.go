@@ -5,6 +5,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/sankarshankar/go-chat/db"
+	"github.com/sankarshankar/go-chat/internal/health"
 	"github.com/sankarshankar/go-chat/internal/user"
 	"github.com/sankarshankar/go-chat/internal/ws"
 	"github.com/sankarshankar/go-chat/router"
@@ -28,6 +29,8 @@ func main() {
 	wsHandler := ws.NewHandler(hub)
 	go hub.Run()
 
-	router.InitRouter(userHandler, wsHandler)
+	healthHandler := health.NewHandler(dbConn.GetDB(), hub)
+
+	router.InitRouter(userHandler, wsHandler, healthHandler)
 	router.Start("0.0.0.0:8080")
 }
